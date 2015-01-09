@@ -1,5 +1,6 @@
 var events = require( 'events' ),
-	util = require( 'util' );
+	util = require( 'util' ),
+	pckg = require( '../package.json' );
 
 /**
  * MessageConnectors allow deepstream instances to communicate with each other.
@@ -28,8 +29,8 @@ var events = require( 'events' ),
  */
 var MessageConnector = function( config ) {
 	this.isReady = false;
-	this.name = require( '../package.json' ).name;
-	this.version = require( '../package.json' ).version;
+	this.name = pckg.name;
+	this.version = pckg.version;
 
 };
 
