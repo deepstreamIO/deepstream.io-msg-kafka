@@ -1,2 +1,4 @@
-# deepstream.io-msg-connector-template
-A template that can be forked to create new message connectors
+deepstream.io-msg-amqp
+======================
+
+[deepstream](http://deepstream.io) message connector for amqp broker
