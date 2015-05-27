@@ -1,4 +1,4 @@
-deepstream.io-msg-amqp
+deepstream.io-msg-connector-template
 ======================
 
-[deepstream](http://deepstream.io) message connector for amqp broker
+A template that provides a starting point for writing [deepstream](http://deepstream.io) message connectors
