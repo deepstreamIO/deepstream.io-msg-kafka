@@ -1,6 +1,6 @@
 /* global describe, it, expect, jasmine */
 var MessageConnector = require( '../src/message-connector' ),
-	settings = { port: 5672, host: 'localhost' },
+	connectionData = require( './connection-data' ),
 	MESSAGE_TIME = 20;
 
 describe( 'Messages are send between multiple instances', function(){
@@ -12,20 +12,20 @@ describe( 'Messages are send between multiple instances', function(){
 		callback_C1 = jasmine.createSpy( 'callback_C1' );
 		
 	it( 'creates connectorA', function( done ){
-		connectorA = new MessageConnector( settings );
+		connectorA = new MessageConnector( connectionData );
 		expect( connectorA.isReady ).toBe( false );
 		connectorA.on( 'ready', done );
 		connectorA.on( 'error', function( e ){ throw e; });
 	});
 	
 	it( 'creates connectorB', function( done ) {
-	    connectorB = new MessageConnector( settings );
+	    connectorB = new MessageConnector( connectionData );
 	    expect( connectorB.isReady ).toBe( false );
 		connectorB.on( 'ready', done );
 	});
 	
 	it( 'creates connectorC', function( done ) {
-	    connectorC = new MessageConnector( settings );
+	    connectorC = new MessageConnector( connectionData );
 	    expect( connectorC.isReady ).toBe( false );
 		connectorC.on( 'ready', done );
 	});

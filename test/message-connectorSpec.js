@@ -1,7 +1,7 @@
 /* global describe, it, expect, jasmine */
 var MessageConnector = require( '../src/message-connector' ),
 	EventEmitter = require( 'events' ).EventEmitter,
-	settings = { port: 5672, host: 'localhost' },
+	connectionData = require( './connection-data' ),
 	MESSAGE_TIME = 20;
 
 describe( 'the message connector has the correct structure', function(){
@@ -9,7 +9,7 @@ describe( 'the message connector has the correct structure', function(){
 	var messageConnector;
 	
 	it( 'creates a messageConnector', function( done ){
-		messageConnector = new MessageConnector( settings );
+		messageConnector = new MessageConnector( connectionData );
 		expect( messageConnector.isReady ).toBe( false );
 		messageConnector.on( 'error', function( e ){ throw e; });
 		messageConnector.on( 'ready', done );
