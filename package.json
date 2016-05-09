@@ -4,7 +4,7 @@
   "description": "template/scaffold for [deepstream](http://deepstream.io) message connector",
   "main": "src/message-connector.js",
   "scripts": {
-    "test": "node node_modules/jasmine-node/lib/jasmine-node/cli.js test --autotest --watch ./src"
+    "test": "./node_modules/.bin/jasmine-node test/again"
   },
   "repository": {
     "type": "git",

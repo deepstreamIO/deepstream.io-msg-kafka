@@ -8,6 +8,13 @@
  *
  * @type {Object}
  */
-module.exports = { 
- 
+module.exports = {
+
+    connectionString: 'localhost:2181',
+    clientId: null,
+    zkOptions: {
+    },
+    noAckBatchOptions: {
+    }
+
 };

@@ -1,7 +1,8 @@
-var events = require( 'events' ),
+var EventEmitter = require( 'events' ).EventEmitter,
 	util = require( 'util' ),
 	pckg = require( '../package.json' ),
-	Connection = require( './connection.js' )
+	Connection = require( './connection.js' ),
+	kafka = require('kafka-node');
 
 /**
  *
@@ -9,16 +10,24 @@ var events = require( 'events' ),
  *
  * @constructor
  */
-var MessageConnector = function( config ) {
-	this.isReady = false;
+var KafkaConnector = function( config ) {
+
 	this.name = pckg.name;
 	this.version = pckg.version;
 
-	this._connection = Connection(config);
+	this.isReady = false;
+    this._clientId = config.clientId || ( Math.random() * 10000000000000000000 ).toString( 36 );
+    this._client = new kafka.Client( config.connectionString );
+    this._producer = new kafka.Producer( this._client );
+    this._consumer = new kafka.Consumer( this._client, [] );
 
-};
+    this._producer.on('ready', this._onReady.bind( this ));
 
-util.inherits( MessageConnector, events.EventEmitter );
+	this._consumer.on('message', this._onMessage.bind( this ));
+
+}
+
+util.inherits( KafkaConnector, EventEmitter );
 
 /**
  * Unsubscribes a function as a listener for a topic. 
@@ -35,9 +44,18 @@ util.inherits( MessageConnector, events.EventEmitter );
  * @public
  * @returns {void}
  */
-MessageConnector.prototype.unsubscribe = function( topic, callback ) {
-	
-};
+KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
+
+	this.removeListener( topic, callback );
+
+	if ( this._hasNoListeners( topic ) ) {
+	    this._consumer.removeTopics([topic], function( err, removed ) {
+        if ( err ) {
+            this._onError( err );
+        }
+    });
+	}
+}
 
 /**
  * Adds a function as a listener for a topic.
@@ -52,9 +70,20 @@ MessageConnector.prototype.unsubscribe = function( topic, callback ) {
  * @public
  * @returns {void}
  */
-MessageConnector.prototype.subscribe = function( topic, callback ) {
-	
-};
+KafkaConnector.prototype.subscribe = function( topic, callback ) {
+
+    if ( this._hasNoListeners( topic ) ) {
+        var _clientId = this._clientId;
+
+        this._consumer.addTopics([topic], function( err, added ) {
+            console.log(_clientId + ': subscribing to topic: ' + topic);
+            if ( err ) {
+                this._onError( err );
+            }
+        });
+    }
+    this.on( topic, callback );
+}
 
 /**
  * Publishes a message on a topic
@@ -74,10 +103,43 @@ MessageConnector.prototype.subscribe = function( topic, callback ) {
  * @public
  * @returns {void}
  */
-MessageConnector.prototype.publish = function( topic, message ) {
-	if ( this._connection.isReady ) {
-	    this._connection.publish(topic, message);
-	}
-};
+KafkaConnector.prototype.publish = function( topic, message ) {
+	var payload = {
+        topic: topic,
+        messages: JSON.stringify({
+            data: message,
+            _s: this._clientId
+        })
+    }
+    var _clientId = this._clientId;
+    this._producer.send([payload], function(err, data) {
+        console.log(_clientId + ': publishing topic: ' + topic + ' message: ' + message)
+        if ( err ) {
+            this._onError( err );
+        }
+    });
+}
 
-module.exports = MessageConnector;
+KafkaConnector.prototype._onMessage = function( message ) {
+    var rawMsg = JSON.parse(message.value);
+    if ( rawMsg._s != this._clientId ) {
+        console.log(this._clientId + ': receiving topic: ' + message.topic + ' message: ' + rawMsg.data);
+        this.emit(message.topic, rawMsg.data);
+    }
+}
+
+KafkaConnector.prototype._onReady = function() {
+    this.isReady = true;
+    console.log('Emitting ready');
+    this.emit('ready');
+}
+
+KafkaConnector.prototype._hasNoListeners = function( topic ) {
+    return this.listenerCount( topic ) == 0;
+}
+
+KafkaConnector.prototype._onError = function( err ) {
+    this.emit( 'error', 'Kafka error: ' + err );
+}
+
+module.exports = KafkaConnector;
