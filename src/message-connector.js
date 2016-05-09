@@ -50,13 +50,14 @@ util.inherits( KafkaConnector, EventEmitter );
  * @returns {void}
  */
 KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
+    var self = this;
 	this.removeListener( topic, callback );
 	if ( this._hasNoListeners( topic ) ) {
 	    this._consumer.removeTopics([topic], function( err, removed ) {
-        if ( err ) {
-            this._onError( err );
-        }
-    });
+            if ( err ) {
+                self._onError.bind( err );
+            }
+        });
 	}
 }
 
@@ -74,11 +75,11 @@ KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
  * @returns {void}
  */
 KafkaConnector.prototype.subscribe = function( topic, callback ) {
-
+    var self = this
     if ( this._hasNoListeners( topic ) ) {
         this._consumer.addTopics([topic], function( err, added ) {
             if ( err ) {
-                this._onError( err );
+                self._onError( err );
             }
         });
     }
@@ -115,6 +116,7 @@ KafkaConnector.prototype.subscribe = function( topic, callback ) {
  * @returns {void}
  */
 KafkaConnector.prototype.publish = function( topic, message ) {
+    var self = this;
 	var payload = {
         topic: topic,
         messages: JSON.stringify({
@@ -124,7 +126,7 @@ KafkaConnector.prototype.publish = function( topic, message ) {
     }
     this._producer.send([payload], function(err, data) {
         if ( err ) {
-            this._onError( err );
+            self._onError( err );
         }
     });
 }
@@ -180,6 +182,6 @@ KafkaConnector.prototype._validateConfig = function( config ) {
 	if( typeof config.connectionString !== 'string' ) {
 		throw new Error( 'Missing config parameter "connectionString"' );
     }
-};
+}
 
 module.exports = KafkaConnector;
