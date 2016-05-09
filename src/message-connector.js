@@ -1,7 +1,6 @@
 var EventEmitter = require( 'events' ).EventEmitter,
 	util = require( 'util' ),
 	pckg = require( '../package.json' ),
-	Connection = require( './connection.js' ),
 	kafka = require('kafka-node');
 
 /**
@@ -16,14 +15,20 @@ var KafkaConnector = function( config ) {
 	this.version = pckg.version;
 
 	this.isReady = false;
+
+	this._validateConfig( config );
     this._clientId = config.clientId || ( Math.random() * 10000000000000000000 ).toString( 36 );
+
     this._client = new kafka.Client( config.connectionString );
     this._producer = new kafka.Producer( this._client );
     this._consumer = new kafka.Consumer( this._client, [] );
 
-    this._producer.on('ready', this._onReady.bind( this ));
+    this._producer.on( 'ready', this._onReady.bind( this ) );
+    this._producer.on( 'error', this._onError.bind( this ) );
 
-	this._consumer.on('message', this._onMessage.bind( this ));
+	this._consumer.on( 'message', this._onMessage.bind( this ) );
+	this._consumer.on( 'error', this._onError.bind( this ) );
+	this._consumer.on( 'offsetOutOfRange', this._onError.bind( this ) );
 
 }
 
@@ -45,9 +50,7 @@ util.inherits( KafkaConnector, EventEmitter );
  * @returns {void}
  */
 KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
-
 	this.removeListener( topic, callback );
-
 	if ( this._hasNoListeners( topic ) ) {
 	    this._consumer.removeTopics([topic], function( err, removed ) {
         if ( err ) {
@@ -73,10 +76,7 @@ KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
 KafkaConnector.prototype.subscribe = function( topic, callback ) {
 
     if ( this._hasNoListeners( topic ) ) {
-        var _clientId = this._clientId;
-
         this._consumer.addTopics([topic], function( err, added ) {
-            console.log(_clientId + ': subscribing to topic: ' + topic);
             if ( err ) {
                 this._onError( err );
             }
@@ -86,15 +86,26 @@ KafkaConnector.prototype.subscribe = function( topic, callback ) {
 }
 
 /**
- * Publishes a message on a topic
+ * Publishes a deepstream message on a topic
  *
- * Please note: message is a javascript object. Its up to the client
- * to serialize it. message will look somewhat like this:
- *
+ * Given a deepstream message of:
  * {
  * 		topic: 'R',
  * 		action: 'P',
  * 		data: [ 'user-54jcvew34', 32, 'zip', 'SE34JN' ]
+ * }
+ *
+ * and a clientId of 75783, it publishes the following payload:
+ *
+ * {
+ *      topic: 'topic1',
+ *      messages: '{
+ *          "data": {
+ *              "topic":"R",
+ *              "action":"P",
+ *              "data":["user-54jcvew34",32,"zip","SE34JN"]},
+ *              "_s":75783
+ *      }'
  * }
  *
  * @param   {String}   topic
@@ -111,26 +122,41 @@ KafkaConnector.prototype.publish = function( topic, message ) {
             _s: this._clientId
         })
     }
-    var _clientId = this._clientId;
     this._producer.send([payload], function(err, data) {
-        console.log(_clientId + ': publishing topic: ' + topic + ' message: ' + message)
         if ( err ) {
             this._onError( err );
         }
     });
 }
 
+/**
+ * Callback for incoming messages.
+ *
+ * Parses the message and emits if not sent from the same clientId.
+ *
+ * @param   {object}   message
+ *
+ * @public
+ * @returns {void}
+ */
 KafkaConnector.prototype._onMessage = function( message ) {
-    var rawMsg = JSON.parse(message.value);
-    if ( rawMsg._s != this._clientId ) {
-        console.log(this._clientId + ': receiving topic: ' + message.topic + ' message: ' + rawMsg.data);
-        this.emit(message.topic, rawMsg.data);
-    }
+    var parsedMessage;
+
+	try{
+		parsedMessage = JSON.parse( message.value.toString( 'utf-8' )  );
+	} catch( e ) {
+		this.emit( 'error', 'message parse error ' + e.toString() );
+	}
+
+	if( parsedMessage._s === this._clientId ) {
+		return;
+	}
+	delete parsedMessage._s;
+    this.emit( message.topic, parsedMessage.data );
 }
 
 KafkaConnector.prototype._onReady = function() {
     this.isReady = true;
-    console.log('Emitting ready');
     this.emit('ready');
 }
 
@@ -141,5 +167,19 @@ KafkaConnector.prototype._hasNoListeners = function( topic ) {
 KafkaConnector.prototype._onError = function( err ) {
     this.emit( 'error', 'Kafka error: ' + err );
 }
+
+/**
+ * Check that the configuration contains all mandatory parameters
+ *
+ * @param   {Object} config
+ *
+ * @private
+ * @returns {void}
+ */
+KafkaConnector.prototype._validateConfig = function( config ) {
+	if( typeof config.connectionString !== 'string' ) {
+		throw new Error( 'Missing config parameter "connectionString"' );
+    }
+};
 
 module.exports = KafkaConnector;

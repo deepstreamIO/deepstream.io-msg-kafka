@@ -1,10 +1,10 @@
 {
-  "name": "deepstream.io-msg-connector-template",
+  "name": "deepstream.io-msg-kafka",
   "version": "0.0.1",
-  "description": "template/scaffold for [deepstream](http://deepstream.io) message connector",
+  "description": "A [deepstream](http://deepstream.io) message connector for Apache Kafka",
   "main": "src/message-connector.js",
   "scripts": {
-    "test": "./node_modules/.bin/jasmine-node test/again"
+    "test": "./node_modules/.bin/jasmine-node test"
   },
   "repository": {
     "type": "git",
