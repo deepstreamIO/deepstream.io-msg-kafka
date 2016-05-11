@@ -12,7 +12,7 @@ var Deepstream = require( 'deepstream.io' ),
     server = new Deepstream();
 
 server.set( 'messageConnector', new KafkaMessageConnector( { 
-  connectionString: 'localhost:6709
+  connectionString: 'localhost:6709'
 }));
 
 server.start();
