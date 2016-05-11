@@ -1,6 +1,19 @@
-deepstream.io-msg-connector-template
-======================
+deepstream.io-msg-kafka 
+===================
 
-A template that provides a starting point for writing [deepstream](http://deepstream.io) message connectors
+[deepstream](http://deepstream.io) message connector for [Apache Kafka](http://kafka.apache.org/)
 
-Have a look at the [message connector tutorial](http://deepstream.io/tutorials/writing-messaging-connector.html).
+This connector uses [the npm kafka-node package](https://www.npmjs.com/package/kafka-node). Please have a look there for detailed config options.
+
+##Basic Setup
+```javascript
+var Deepstream = require( 'deepstream.io' ),
+    KafkaMessageConnector = require( 'deepstream.io-msg-kafka' ), //currently no npm package, coming soon
+    server = new Deepstream();
+
+server.set( 'messageConnector', new KafkaMessageConnector( { 
+  connectionString: 'localhost:6709
+}));
+
+server.start();
+```
