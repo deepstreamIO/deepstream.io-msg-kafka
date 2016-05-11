@@ -9,11 +9,6 @@ describe( 'Messages are send between multiple instances', function(){
     var client = new kafka.Client(),
         producer = new kafka.Producer(client);
 
-    producer.on('ready', function() {
-        producer.createTopics(['topic1'], false, function (err, data) {
-        });
-    });
-
 	var connectorA,
 		connectorB,
 		connectorC,

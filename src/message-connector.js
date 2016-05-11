@@ -15,6 +15,7 @@ var KafkaConnector = function( config ) {
 	this.version = pckg.version;
 
 	this.isReady = false;
+	this._topics = [];
 
 	this._validateConfig( config );
     this._clientId = config.clientId || ( Math.random() * 10000000000000000000 ).toString( 36 );
@@ -64,9 +65,8 @@ KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
 /**
  * Adds a function as a listener for a topic.
  *
- * It might make sense to only send the subscription to the messaging
- * middleware for the first subscriber for a topic and multiplex incoming
- * messages using an eventemitter
+ * If the topic doesn't exist to be added, it will
+ * be created, then added.
  *
  * @param   {String}   topic
  * @param   {Function} callback
@@ -75,15 +75,40 @@ KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
  * @returns {void}
  */
 KafkaConnector.prototype.subscribe = function( topic, callback ) {
-    var self = this
+    var self = this;
     if ( this._hasNoListeners( topic ) ) {
-        this._consumer.addTopics([topic], function( err, added ) {
-            if ( err ) {
-                self._onError( err );
+
+        //Try add
+        this._consumer.addTopics([topic], function( errAdding, added ) {
+            if ( errAdding ) {
+
+                // When adding a topic to a consumer and the topic
+                // does not exist, we'll get a 'The topic(s) [topic] do not exist'
+                // error. This just creates the topic asynchronously 
+                // then calls subscribe again.
+                var matchingErrMsg = 'The topic(s) ' + topic + ' do not exist';
+                if ( errAdding.message.indexOf( matchingErrMsg ) > -1 ) {
+                    self._producer.createTopics([topic], function ( errCreating, data ) {
+                        if ( errCreating ) self._onError( err );
+                        if ( data ) setTimeout( self.subscribe(topic, callback), 50);
+                    });
+
+                // something else went wrong
+                } else {
+                    self._onError( errAdding );
+                }
+            }
+
+            // ToDo: if this KafkaConnector is already subscribed
+            // to the topic and we're just adding another callback, 
+            // we can look at having a 
+            //      if ( this._topics.contains( topic ) )
+            // method, which would save trying to add the topic.
+            if ( added ) {
+                self.on( topic, callback );
             }
         });
     }
-    this.on( topic, callback );
 }
 
 /**
@@ -124,8 +149,20 @@ KafkaConnector.prototype.publish = function( topic, message ) {
             _s: this._clientId
         })
     }
-    this._producer.send([payload], function(err, data) {
+    this._producer.send([payload], function( err, data ) {
         if ( err ) {
+            // node-kafka will create topics when a payload is sent
+            // if they don't exist, however they are not created 
+            // immediately. This just sends the message again now 
+            // that the topic has been created.
+            // Todo: This may need a setTimeout on _producer.send
+            if ( err.indexOf( 'LeaderNotAvailable' ) > -1 ) {
+                self._producer.send([payload], function( _err, data ) {
+                    if ( _err ) {
+                        self._onError( _err );
+                    }
+                });
+            }
             self._onError( err );
         }
     });
@@ -171,7 +208,7 @@ KafkaConnector.prototype._onError = function( err ) {
 }
 
 /**
- * Check that the configuration contains all mandatory parameters
+ * Checks that the config has a connectionString key.
  *
  * @param   {Object} config
  *
