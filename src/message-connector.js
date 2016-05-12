@@ -79,13 +79,12 @@ KafkaConnector.prototype.subscribe = function( topic, callback ) {
 	var self = this;
 	if ( this._hasNoListeners( topic ) ) {
 
-		//Try add
 		this._consumer.addTopics( [ topic ], function( errAdding, added ) {
 			if ( errAdding ) {
 
 				// When adding a topic to a consumer and the topic
 				// does not exist, we'll get a 'The topic(s) [topic] do not exist'
-				// error. This just creates the topic asynchronously 
+				// error. This block creates the topic asynchronously 
 				// then calls subscribe again.
 				var matchingErrMsg = 'The topic(s) ' + topic + ' do not exist';
 				if ( errAdding.message.indexOf( matchingErrMsg ) > -1 ) {
@@ -95,7 +94,7 @@ KafkaConnector.prototype.subscribe = function( topic, callback ) {
 							self._onError( errCreating );
 						}
 						if ( data ) {
-							setTimeout( self.subscribe( topic, callback ), 50 );
+							self.subscribe( topic, callback );
 						}
 					} );
 
@@ -104,14 +103,14 @@ KafkaConnector.prototype.subscribe = function( topic, callback ) {
 					self._onError( errAdding );
 				}
 			}
-
 			if ( added ) {
 				self.on( topic, callback );
 				return;
 			}
 		} );
+	} else {
+		this.on( topic, callback );
 	}
-	this.on( topic, callback );
 }
 
 /**
@@ -154,19 +153,24 @@ KafkaConnector.prototype.publish = function( topic, message ) {
 	}
 	this._producer.send( [ payload ], function( err, data ) {
 		if ( err ) {
-			// node-kafka will create topics when a payload is sent
-			// if they don't exist, however they are not created 
-			// immediately. This just sends the message again now 
-			// that the topic has been created.
-			// Todo: This may need a setTimeout on _producer.send
+			// If the topic doesn't exist when sending a payload we'll get a 
+			// LeaderNotAvailable error. This block creates the topic async 
+			// then sends the payload.
 			if ( err.indexOf( 'LeaderNotAvailable' ) > -1 ) {
-				setTimeout(
-					self._producer.send( [ payload ], function( _err, data ) {
-						if ( _err ) {
-							self._onError( _err );
-						}
-					} ), 200 );
+				self._producer.createTopics( [ topic ], function( errCreating, data ) {
+					if ( errCreating ) {
+						self._onError( errCreating );
+					}
+					if ( data ) {
+						self._producer.send( [ payload ], function( _err, data ) {
+							if ( _err ) {
+								self._onError( _err );
+							}
+						} );
+					}
+				} );
 			} else {
+				//something else went wrong
 				self._onError( err );
 			}
 		}
