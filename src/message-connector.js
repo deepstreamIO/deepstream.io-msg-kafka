@@ -114,7 +114,10 @@ KafkaConnector.prototype.subscribe = function( topic, callback ) {
  *      }'
  * }
  *
- * @param   {String}   topic
+ * @param {
+    String
+ }
+ topic
  * @param   {Object}   message
  *
  * @public
@@ -233,7 +236,7 @@ KafkaConnector.prototype._tryAdd = function( topic, callback ) {
  * Tries to send a topic, creates it if it doesn't exist, then 
  * sends it.
  *
- * @param   {String}   topic
+ * @param   {Object}   payload
  * @param   {Function} callback
  *
  * @public
