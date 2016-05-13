@@ -66,8 +66,8 @@ KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
 /**
  * Adds a function as a listener for a topic.
  *
- * If the topic doesn't exist to be added, it will
- * be created, then added.
+ * If the topic doesn't exist to be added, it will be created, then
+ * added.
  *
  * @param   {String}   topic
  * @param   {Function} callback
@@ -78,34 +78,12 @@ KafkaConnector.prototype.unsubscribe = function( topic, callback ) {
 KafkaConnector.prototype.subscribe = function( topic, callback ) {
 	var self = this;
 	if ( this._hasNoListeners( topic ) ) {
-
-		this._consumer.addTopics( [ topic ], function( errAdding, added ) {
-			if ( errAdding ) {
-
-				// When adding a topic to a consumer and the topic
-				// does not exist, we'll get a 'The topic(s) [topic] do not exist'
-				// error. This block creates the topic asynchronously 
-				// then calls subscribe again.
-				var matchingErrMsg = 'The topic(s) ' + topic + ' do not exist';
-				if ( errAdding.message.indexOf( matchingErrMsg ) > -1 ) {
-
-					self._producer.createTopics( [ topic ], function( errCreating, data ) {
-						if ( errCreating ) {
-							self._onError( errCreating );
-						}
-						if ( data ) {
-							self.subscribe( topic, callback );
-						}
-					} );
-
-				} else {
-					// something else went wrong
-					self._onError( errAdding );
-				}
+		this._tryAdd( topic, function( err, added ) {
+			if ( err ) {
+				this._onError( err );
 			}
 			if ( added ) {
 				self.on( topic, callback );
-				return;
 			}
 		} );
 	} else {
@@ -151,36 +129,17 @@ KafkaConnector.prototype.publish = function( topic, message ) {
 			_s: this._clientId
 		} )
 	}
-	this._producer.send( [ payload ], function( err, data ) {
+	this._trySend( payload, function( err ) {
 		if ( err ) {
-			// If the topic doesn't exist when sending a payload we'll get a 
-			// LeaderNotAvailable error. This block creates the topic async 
-			// then sends the payload.
-			if ( err.indexOf( 'LeaderNotAvailable' ) > -1 ) {
-				self._producer.createTopics( [ topic ], function( errCreating, data ) {
-					if ( errCreating ) {
-						self._onError( errCreating );
-					}
-					if ( data ) {
-						self._producer.send( [ payload ], function( _err, data ) {
-							if ( _err ) {
-								self._onError( _err );
-							}
-						} );
-					}
-				} );
-			} else {
-				//something else went wrong
-				self._onError( err );
-			}
+			self._onError( err );
 		}
-	} );
+	} )
 }
 
 /**
  * Callback for incoming messages.
  *
- * Parses the message and emits if not sent from the same clientId.
+ * Parses the message, removes _s (the sender Id) and emits if not sent from the same clientId.
  *
  * @param   {object}   message
  *
@@ -230,6 +189,95 @@ KafkaConnector.prototype._hasNoListeners = function( topic ) {
  */
 KafkaConnector.prototype._onError = function( err ) {
 	this.emit( 'error', 'Kafka error: ' + err );
+}
+
+/**
+ * Tries to add a topic to the consumer, creates it if
+ * it doesn't exist, then adds it.
+ *
+ * @param   {String}   topic
+ * @param   {Function} callback
+ *
+ * @public
+ * @returns {void}
+ */
+KafkaConnector.prototype._tryAdd = function( topic, callback ) {
+	var self = this;
+	this._consumer.addTopics( [ topic ], function( err, added ) {
+		if ( err ) {
+			var matchingErrMsg = 'The topic(s) ' + topic + ' do not exist';
+			if ( err.message.indexOf( matchingErrMsg ) > -1 ) {
+				// When adding a topic to a consumer and the topic
+				// does not exist, we'll get a 'The topic(s) [topic] do not exist'
+				// error. Need to create topic then add it.
+				self._createTopic( topic, function( err, created ) {
+					if ( err ) {
+						callback( err, created );
+					}
+					if ( created ) {
+						self._tryAdd( topic, callback );
+					}
+				} );
+			} else {
+				// something else went wrong
+				callback( err, added );
+			}
+		}
+		if ( added ) {
+			callback( err, added );
+		}
+	} );
+}
+
+/**
+ * Tries to send a topic, creates it if it doesn't exist, then 
+ * sends it.
+ *
+ * @param   {String}   topic
+ * @param   {Function} callback
+ *
+ * @public
+ * @returns {void}
+ */
+KafkaConnector.prototype._trySend = function( payload, callback ) {
+	var self = this;
+	this._producer.send( [ payload ], function( err, data ) {
+		if ( err ) {
+			if ( err.indexOf( 'LeaderNotAvailable' ) > -1 ) {
+				// If the topic doesn't exist when sending a payload we'll get a 
+				// LeaderNotAvailable error. This block creates the topic async 
+				// then sends the payload.
+				self._createTopic( payload.topic, function( err, created ) {
+					if ( err ) {
+						callback( err );
+					}
+					if ( created ) {
+						self._trySend( payload, callback );
+					}
+				} );
+			} else {
+				//something else went wrong
+				callback( err );
+			}
+		}
+	} );
+}
+
+/**
+ * Creates a topic if it doesn't exist.
+ *
+ * Allows passing back of err or data to callback.
+ *
+ * @param   {String}   topic
+ * @param   {Function} callback
+ *
+ * @public
+ * @returns {void}
+ */
+KafkaConnector.prototype._createTopic = function( topic, callback ) {
+	this._producer.createTopics( [ topic ], function( err, data ) {
+		callback( err, data );
+	} );
 }
 
 /**
