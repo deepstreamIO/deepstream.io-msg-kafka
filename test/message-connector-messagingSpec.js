@@ -1,8 +1,10 @@
 /* global describe, it, expect, jasmine */
+
 var KafkaConnector = require( '../src/message-connector.js' ),
 	connectionData = require( './connection-data' ),
 	kafka = require( 'kafka-node' ),
 	MESSAGE_TIME = 2000;
+
 
 describe( 'Messages are send between multiple instances', function() {
 
