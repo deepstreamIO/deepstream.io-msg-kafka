@@ -6,7 +6,7 @@ var KafkaConnector = require( '../src/message-connector.js' ),
 	MESSAGE_TIME = 2000;
 
 
-describe( 'Messages are send between multiple instances', function() {
+describe( 'Messages are sent between multiple instances', function() {
 
 	var connectorA,
 		connectorB,

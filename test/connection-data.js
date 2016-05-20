@@ -10,7 +10,7 @@
  */
 
 const kafka_host = process.env.KAFKA_HOST || 'localhost';
-const kafka_port = process.env.KAFKA_PORT || 2181;
+const kafka_port = process.env.KAFKA_PORT || 9092;
 
 module.exports = {
   connectionString: (kafka_host + ':' + kafka_port),
