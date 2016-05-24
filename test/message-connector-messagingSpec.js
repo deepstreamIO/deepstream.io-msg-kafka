@@ -4,7 +4,7 @@
 const KafkaConnector = require('../src/message-connector.js');
 const connectionData = require('./connection-data');
 const kafka = require('kafka-node');
-const MESSAGE_TIME = 500;
+const MESSAGE_TIME = 1000;
 
 
 describe('Messages are sent between multiple instances', () => {
@@ -23,7 +23,8 @@ describe('Messages are sent between multiple instances', () => {
     expect(connectorA.isReady).toBe(false);
     connectorA.on('ready', done);
     connectorA.on('error', (e) => {
-      throw e;
+      fail();
+      done();
     });
   });
 
@@ -31,7 +32,6 @@ describe('Messages are sent between multiple instances', () => {
     connectorB = new KafkaConnector(connectionData);
     expect(connectorB.isReady).toBe(false);
     connectorB.on('ready', done);
-
   });
 
   it('creates connectorC', (done) => {

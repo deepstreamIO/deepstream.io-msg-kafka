@@ -212,11 +212,9 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   _addTopic(topic, callback) {
-    const autoCreateCallback = this._createTopicCallback(topic, callback, () => {
+    this._autoCreateTopic(topic, callback, (callback) => {
       this._consumer.addTopics([topic], callback);
     });
-
-    this._consumer.addTopics([topic], autoCreateCallback);
   }
 
   /**
@@ -230,45 +228,67 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   _send(payload, callback) {
-    const autoCreateCallback = this._createTopicCallback(payload.topic, callback, () => {
+    this._autoCreateTopic(payload.topic, callback, (callback) => {
       this._producer.send([payload], callback);
     });
-
-    this._producer.send([payload], autoCreateCallback);
   }
 
   /**
    * Creates a callback function that catches TopicsNotExistError, creates a new
-   * topic and calls retryCallback.
+   * topic and calls methodCallback.
    *
    * @param   {String}   topic
-   * @param   {Function} callback
-   * @param   {Function} retryCallback
+   * @param   {Function} origCallback
+   * @param   {Function} methodCallback
    *
    * @private
    * @returns {Function}
    */
-  _createTopicCallback(topic, callback, retryCallback) {
-    return (err, arg) => {
+  _autoCreateTopic(topic, origCallback, methodCallback) {
+    let tries = 0;
+
+    const _internalCallback = (err, arg) => {
       if (err) {
         if(err instanceof kafkaErrors.TopicsNotExistError) {
           this._producer.createTopics([topic], false, (err) => {
             if(err) {
               // Error creating topic:
-              callback(err);
+              origCallback(err);
               return;
             }
             // Topic created, retry:
-            retryCallback();
+            methodCallback(origCallback);
           });
           return;
         }
+
+        // Sometimes kafka will throw a strange error in the form of an Array.
+        // This is probably related to the deployment of the actual kafka
+        // or zookeeper service as it only happens once, when the server hasn't
+        // been accessed for a while.
+        if(JSON.stringify(err) === '["LeaderNotAvailable"]') {
+          // Let's log the error none the less:
+          if(tries < 3) {
+            this._onError(`LeaderNotAvailable Error. Retrying... ${tries}`);
+            methodCallback(_internalCallback);
+            tries++;
+            return;
+          }
+
+          // Retrying has been unsuccessful:
+          this._onError(`LeaderNotAvailable Error. Permanent fail.`);
+          return;
+        }
+
         // Something else went wrong:
-        callback(err);
+        origCallback(err);
       }
       // Topic exists, no problem:
-      callback(null, arg);
+      origCallback(null, arg);
     }
+
+    // Initial call;
+    methodCallback(_internalCallback);
   }
 
   /**

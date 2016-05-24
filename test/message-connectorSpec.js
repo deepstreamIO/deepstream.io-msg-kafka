@@ -15,8 +15,8 @@ describe('the message connector has the correct structure', () => {
     expect(messageConnector.isReady).toBe(false);
 
     messageConnector.on('error', (err) => {
-      fail()
-      done()
+      fail();
+      done();
     });
 
     messageConnector.on('ready', done);
