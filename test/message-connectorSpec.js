@@ -1,33 +1,41 @@
+"use strict";
 /* global describe, it, expect, jasmine */
 
-var MessageConnector = require( '../src/message-connector' ),
-	EventEmitter = require( 'events' ).EventEmitter,
-	connectionData = require( './connection-data' ),
-	MESSAGE_TIME = 20;
+const MessageConnector = require('../src/message-connector');
+const EventEmitter = require('events').EventEmitter;
+const connectionData = require('./connection-data');
 
 
-describe( 'the message connector has the correct structure', function(){
+describe('the message connector has the correct structure', () => {
+  let messageConnector;
 
-	var messageConnector;
+  it('creates a messageConnector', (done) => {
+    messageConnector = new MessageConnector(connectionData);
 
-	it( 'creates a messageConnector', function( done ){
-		messageConnector = new MessageConnector( connectionData );
-		expect( messageConnector.isReady ).toBe( false );
-		messageConnector.on( 'error', function( e ){ throw e; });
-		messageConnector.on( 'ready', done );
-	});
+    expect(messageConnector.isReady).toBe(false);
 
-	it( 'implements the messageConnector interface', function() {
-		expect( typeof messageConnector.subscribe ).toBe( 'function' );
-		expect( typeof messageConnector.unsubscribe ).toBe( 'function' );
-		expect( typeof messageConnector.publish ).toBe( 'function' );
-		expect( typeof messageConnector.isReady ).toBe( 'boolean' );
-		expect( typeof messageConnector.name ).toBe( 'string' );
-		expect( typeof messageConnector.version ).toBe( 'string' );
-		expect( messageConnector instanceof EventEmitter ).toBe( true );
-	});
+    messageConnector.on('error', (err) => {
+      fail()
+      done()
+    });
 
-	it( 'throws an error when required settings are missing', function() {
-		expect(function(){ new MessageConnector( 'gibberish' ); }).toThrow();
-	});
+    messageConnector.on('ready', done);
+  });
+
+  it('implements the messageConnector interface', () => {
+    expect(typeof messageConnector.subscribe).toBe('function');
+    expect(typeof messageConnector.unsubscribe).toBe('function');
+    expect(typeof messageConnector.publish).toBe('function');
+    expect(typeof messageConnector.isReady).toBe('boolean');
+    expect(typeof messageConnector.name).toBe('string');
+    expect(typeof messageConnector.version).toBe('string');
+
+    expect(messageConnector instanceof EventEmitter).toBe(true);
+  });
+
+  it('throws an error when required settings are missing', () => {
+    expect(() => {
+      new MessageConnector('gibberish');
+    }).toThrow();
+  });
 });
