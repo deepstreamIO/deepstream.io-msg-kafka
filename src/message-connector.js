@@ -6,15 +6,18 @@ const kafka = require('kafka-node');
 const kafkaErrors = require('kafka-node/lib/errors');
 
 
+/**
+ * A [deepstream](http://deepstream.io) message connector class
+ * for Kafka.
+ *
+ * @extends EventEmitter
+ */
 class KafkaConnector extends EventEmitter {
   /**
-   *
-   * @param {Object} config Connection configuration.
-   *
-   * @constructor
+   * @param {Object} config Kafka connection configuration.
    */
   constructor(config) {
-    super()
+    super();
 
     this.name = pckg.name;
     this.version = pckg.version;
@@ -23,15 +26,18 @@ class KafkaConnector extends EventEmitter {
     this._topics = [];
 
     this._validateConfig(config);
-    this._clientId = config.clientId || (Math.random() * 10000000000000000000).toString(36);
+    this._clientId = config.clientId || (Math.random() * 1e32).toString(36);
 
     this._client = new kafka.Client(config.connectionString);
-    this._producer = new kafka.Producer(this._client);
-    this._consumer = new kafka.Consumer(this._client, []);
 
-    this._producer.on('ready', this._onReady.bind(this));
+    this._producer = new kafka.Producer(this._client);
+    this._producer.on('ready', () => {
+      this.isReady = true;
+      this.emit('ready');
+    });
     this._producer.on('error', this._onError.bind(this));
 
+    this._consumer = new kafka.Consumer(this._client, []);
     this._consumer.on('message', this._onMessage.bind(this));
     this._consumer.on('error', this._onError.bind(this));
     this._consumer.on('offsetOutOfRange', this._onError.bind(this));
@@ -53,15 +59,19 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   unsubscribe(topic, callback) {
-    if (this._hasNoListeners(topic)) {
-      this._consumer.removeTopics([topic], (err, removed) => {
-        if (err) {
-          this._onError(err);
-        }
-      });
-    } else {
+    if (this.listenerCount(topic)) {
       this.removeListener(topic, callback);
+      return;
     }
+
+    this._consumer.removeTopics([topic], (err, removed) => {
+      if (err) {
+        this._onError(err);
+      }
+      if (removed) {
+        this.removeListener(topic, callback);
+      }
+    });
   }
 
   /**
@@ -77,19 +87,19 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   subscribe(topic, callback) {
-    if (this._hasNoListeners(topic)) {
-      this._tryAdd(topic, (err, added) => {
-        if (err) {
-          this._onError(err);
-          return;
-        }
-        if (added) {
-          this.on(topic, callback);
-        }
-      });
-    } else {
+    if (this.listenerCount(topic)) {
       this.on(topic, callback);
+      return;
     }
+
+    this._addTopic(topic, (err, added) => {
+      if (err) {
+        this._onError(err);
+      }
+      if (added) {
+        this.on(topic, callback);
+      }
+    });
   }
 
   /**
@@ -97,28 +107,26 @@ class KafkaConnector extends EventEmitter {
    *
    * Given a deepstream message of:
    * {
-   *    topic: 'R',
-   *    action: 'P',
-   *    data: [ 'user-54jcvew34', 32, 'zip', 'SE34JN' ]
+   *   topic: 'R',
+   *   action: 'P',
+   *   data: ['user-54jcvew34', 32, 'zip', 'SE34JN']
    * }
    *
    * a clientId 75783 and a topic 'topic1', it publishes the following payload:
    *
    * {
-   *      topic: 'topic1',
-   *      messages: '{
-   *          "data": {
-   *              "topic":"R",
-   *              "action":"P",
-   *              "data":["user-54jcvew34",32,"zip","SE34JN"]},
-   *              "_s":75783
-   *      }'
+   *   topic: "topic1",
+   *   messages: "{
+   *     \"data\": {
+   *       \"topic\":\"R\",
+   *       \"action\":\"P\",
+   *       \"data\":[\"user-54jcvew34\", 32, \"zip\", \"SE34JN\"]
+   *     },
+   *     \"_s\":75783
+   *   }"
    * }
    *
-   * @param {
-      String
-   }
-   topic
+   * @param   {String}   topic
    * @param   {Object}   message
    *
    * @public
@@ -133,7 +141,7 @@ class KafkaConnector extends EventEmitter {
       })
     }
 
-    this._trySend(payload, (err) => {
+    this._send(payload, (err) => {
       if (err) {
         this._onError(err);
       }
@@ -143,11 +151,12 @@ class KafkaConnector extends EventEmitter {
   /**
    * Callback for incoming messages.
    *
-   * Parses the message, removes _s (the sender Id) and emits if not sent from the same clientId.
+   * Parses the message, removes _s (the sender Id) and emits if not sent from
+   * the same clientId.
    *
    * @param   {object}   message
    *
-   * @public
+   * @private
    * @returns {void}
    */
   _onMessage(message) {
@@ -155,20 +164,17 @@ class KafkaConnector extends EventEmitter {
 
     try {
       parsedMessage = JSON.parse(message.value.toString('utf-8'));
-    } catch (e) {
-      this.emit('error', 'message parse error ' + e.toString());
+    } catch (err) {
+      this.emit('error', `message parse error ${err}`);
     }
 
     if (parsedMessage._s === this._clientId) {
       return;
     }
-    delete parsedMessage._s;
-    this.emit(message.topic, parsedMessage.data);
-  }
 
-  _onReady() {
-    this.isReady = true;
-    this.emit('ready');
+    delete parsedMessage._s;
+
+    this.emit(message.topic, parsedMessage.data);
   }
 
   /**
@@ -192,7 +198,7 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   _onError(err) {
-    this.emit('error', 'Kafka error: ' + err);
+    this.emit(`error`, `Kafka error: ${err}`);
   }
 
   /**
@@ -202,10 +208,10 @@ class KafkaConnector extends EventEmitter {
    * @param   {String}   topic
    * @param   {Function} callback
    *
-   * @public
+   * @private
    * @returns {void}
    */
-  _tryAdd(topic, callback) {
+  _addTopic(topic, callback) {
     const autoCreateCallback = this._createTopicCallback(topic, callback, () => {
       this._consumer.addTopics([topic], callback);
     });
@@ -220,10 +226,10 @@ class KafkaConnector extends EventEmitter {
    * @param   {Object}   payload
    * @param   {Function} callback
    *
-   * @public
+   * @private
    * @returns {void}
    */
-  _trySend(payload, callback) {
+  _send(payload, callback) {
     const autoCreateCallback = this._createTopicCallback(payload.topic, callback, () => {
       this._producer.send([payload], callback);
     });
@@ -231,22 +237,36 @@ class KafkaConnector extends EventEmitter {
     this._producer.send([payload], autoCreateCallback);
   }
 
+  /**
+   * Creates a callback function that catches TopicsNotExistError, creates a new
+   * topic and calls retryCallback.
+   *
+   * @param   {String}   topic
+   * @param   {Function} callback
+   * @param   {Function} retryCallback
+   *
+   * @private
+   * @returns {Function}
+   */
   _createTopicCallback(topic, callback, retryCallback) {
     return (err, arg) => {
       if (err) {
         if(err instanceof kafkaErrors.TopicsNotExistError) {
           this._producer.createTopics([topic], false, (err) => {
             if(err) {
+              // Error creating topic:
               callback(err);
               return;
             }
+            // Topic created, retry:
             retryCallback();
           });
           return;
         }
-        // Something else went wrong
+        // Something else went wrong:
         callback(err);
       }
+      // Topic exists, no problem:
       callback(null, arg);
     }
   }
