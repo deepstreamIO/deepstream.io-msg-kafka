@@ -21,8 +21,8 @@ describe('Messages are sent between multiple instances', () => {
   it('creates connectorA', (done) => {
     connectorA = new KafkaConnector(connectionData);
     expect(connectorA.isReady).toBe(false);
-    connectorA.on('ready', done);
-    connectorA.on('error', (e) => {
+    connectorA.once('ready', done);
+    connectorA.once('error', (err) => {
       fail();
       done();
     });
@@ -31,13 +31,13 @@ describe('Messages are sent between multiple instances', () => {
   it('creates connectorB', (done) => {
     connectorB = new KafkaConnector(connectionData);
     expect(connectorB.isReady).toBe(false);
-    connectorB.on('ready', done);
+    connectorB.once('ready', done);
   });
 
   it('creates connectorC', (done) => {
     connectorC = new KafkaConnector(connectionData);
     expect(connectorC.isReady).toBe(false);
-    connectorC.on('ready', done);
+    connectorC.once('ready', done);
   });
 
   it('the connectors are ready', () => {

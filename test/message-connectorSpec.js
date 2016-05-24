@@ -14,12 +14,12 @@ describe('the message connector has the correct structure', () => {
 
     expect(messageConnector.isReady).toBe(false);
 
-    messageConnector.on('error', (err) => {
+    messageConnector.once('error', (err) => {
       fail();
       done();
     });
 
-    messageConnector.on('ready', done);
+    messageConnector.once('ready', done);
   });
 
   it('implements the messageConnector interface', () => {

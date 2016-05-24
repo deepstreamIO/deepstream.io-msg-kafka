@@ -267,16 +267,14 @@ class KafkaConnector extends EventEmitter {
         // or zookeeper service as it only happens once, when the server hasn't
         // been accessed for a while.
         if(JSON.stringify(err) === '["LeaderNotAvailable"]') {
-          // Let's log the error none the less:
           if(tries < 3) {
-            this._onError(`LeaderNotAvailable Error. Retrying... ${tries}`);
             methodCallback(_internalCallback);
             tries++;
             return;
           }
 
           // Retrying has been unsuccessful:
-          this._onError(`LeaderNotAvailable Error. Permanent fail.`);
+          origCallback(new Error('LeaderNotAvailable'));
           return;
         }
 
