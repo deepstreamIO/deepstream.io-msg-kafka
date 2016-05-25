@@ -59,17 +59,15 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   unsubscribe(topic, callback) {
-    if (this.listenerCount(topic)) {
-      this.removeListener(topic, callback);
+    this.removeListener(topic, callback);
+
+    if (this.listenerCount(topic) > 0) {
       return;
     }
 
     this._consumer.removeTopics([topic], (err, removed) => {
       if (err) {
         this._onError(err);
-      }
-      if (removed) {
-        this.removeListener(topic, callback);
       }
     });
   }
@@ -87,6 +85,7 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   subscribe(topic, callback) {
+
     if (this.listenerCount(topic)) {
       this.on(topic, callback);
       return;
