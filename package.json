@@ -4,7 +4,7 @@
   "description": "A [deepstream](http://deepstream.io) message connector for Apache Kafka",
   "main": "src/message-connector.js",
   "scripts": {
-    "test": "node node_modules/jasmine/bin/jasmine JASMINE_CONFIG_PATH=jasmine.json",
+    "test": "istanbul cover jasmine JASMINE_CONFIG_PATH=jasmine.json",
     "reporter": "node jasmine-runner"
   },
   "repository": {
@@ -21,6 +21,10 @@
     "kafka-node": "^0.3.2"
   },
   "devDependencies": {
-    "jasmine": "^2.4.1"
+    "deepstream.io": "*",
+    "deepstream.io-client-js": "*",
+    "jasmine": "^2.4.1",
+    "coveralls": "^2.11.9",
+    "istanbul": "^0.4.3"
   }
 }
