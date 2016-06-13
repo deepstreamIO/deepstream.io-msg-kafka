@@ -14,7 +14,7 @@
   "author": "deepstreamHub GmbH",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hoxton-one/deepstream.io-msg-connector-template/issues"
+    "url": "https://github.com/deepstreamIO/deepstream.io-msg-connector-template/issues"
   },
   "homepage": "http://deepstream.io",
   "dependencies": {
