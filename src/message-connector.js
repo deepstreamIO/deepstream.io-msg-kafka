@@ -1,9 +1,9 @@
-'use strict';
+'use strict'
 
-const EventEmitter = require('events').EventEmitter;
-const pckg = require('../package.json');
-const kafka = require('kafka-node');
-const kafkaErrors = require('kafka-node/lib/errors');
+const EventEmitter = require('events').EventEmitter
+const pckg = require('../package.json')
+const kafka = require('kafka-node')
+const kafkaErrors = require('kafka-node/lib/errors')
 
 
 /**
@@ -17,30 +17,30 @@ class KafkaConnector extends EventEmitter {
    * @param {Object} config Kafka connection configuration.
    */
   constructor(config) {
-    super();
+    super()
 
-    this.name = pckg.name;
-    this.version = pckg.version;
+    this.name = pckg.name
+    this.version = pckg.version
 
-    this.isReady = false;
-    this._topics = [];
+    this.isReady = false
+    this._topics = []
 
-    this._validateConfig(config);
-    this._clientId = config.clientId || (Math.random() * 1e32).toString(36);
+    this._validateConfig(config)
+    this._clientId = config.clientId || (Math.random() * 1e32).toString(36)
 
-    this._client = new kafka.Client(config.connectionString);
+    this._client = new kafka.Client(config.connectionString)
 
-    this._producer = new kafka.Producer(this._client);
+    this._producer = new kafka.Producer(this._client)
     this._producer.on('ready', () => {
-      this.isReady = true;
-      this.emit('ready');
-    });
-    this._producer.on('error', this._onError.bind(this));
+      this.isReady = true
+      this.emit('ready')
+    })
+    this._producer.on('error', this._onError.bind(this))
 
-    this._consumer = new kafka.Consumer(this._client, []);
-    this._consumer.on('message', this._onMessage.bind(this));
-    this._consumer.on('error', this._onError.bind(this));
-    this._consumer.on('offsetOutOfRange', this._onError.bind(this));
+    this._consumer = new kafka.Consumer(this._client, [])
+    this._consumer.on('message', this._onMessage.bind(this))
+    this._consumer.on('error', this._onError.bind(this))
+    this._consumer.on('offsetOutOfRange', this._onError.bind(this))
   }
 
   /**
@@ -60,18 +60,18 @@ class KafkaConnector extends EventEmitter {
    */
   unsubscribe(topic, callback) {
     if (this.listenerCount(topic)) {
-      this.removeListener(topic, callback);
-      return;
+      this.removeListener(topic, callback)
+      return
     }
 
     this._consumer.removeTopics([topic], (err, removed) => {
       if (err) {
-        this._onError(err);
+        this._onError(err)
       }
       if (removed) {
-        this.removeListener(topic, callback);
+        this.removeListener(topic, callback)
       }
-    });
+    })
   }
 
   /**
@@ -88,18 +88,18 @@ class KafkaConnector extends EventEmitter {
    */
   subscribe(topic, callback) {
     if (this.listenerCount(topic)) {
-      this.on(topic, callback);
-      return;
+      this.on(topic, callback)
+      return
     }
 
     this._addTopic(topic, (err, added) => {
       if (err) {
-        this._onError(err);
+        this._onError(err)
       }
       if (added) {
-        this.on(topic, callback);
+        this.on(topic, callback)
       }
-    });
+    })
   }
 
   /**
@@ -143,7 +143,7 @@ class KafkaConnector extends EventEmitter {
 
     this._send(payload, (err) => {
       if (err) {
-        this._onError(err);
+        this._onError(err)
       }
     })
   }
@@ -160,21 +160,21 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   _onMessage(message) {
-    var parsedMessage;
+    var parsedMessage
 
     try {
-      parsedMessage = JSON.parse(message.value.toString('utf-8'));
+      parsedMessage = JSON.parse(message.value.toString('utf-8'))
     } catch (err) {
-      this.emit('error', `message parse error ${err}`);
+      this.emit('error', `message parse error ${err}`)
     }
 
     if (parsedMessage._s === this._clientId) {
-      return;
+      return
     }
 
-    delete parsedMessage._s;
+    delete parsedMessage._s
 
-    this.emit(message.topic, parsedMessage.data);
+    this.emit(message.topic, parsedMessage.data)
   }
 
   /**
@@ -187,7 +187,7 @@ class KafkaConnector extends EventEmitter {
    * @returns {bool}
    */
   _hasNoListeners(topic) {
-    return this.listenerCount(topic) === 0;
+    return this.listenerCount(topic) === 0
   }
 
   /**
@@ -198,7 +198,7 @@ class KafkaConnector extends EventEmitter {
    * @returns {void}
    */
   _onError(err) {
-    this.emit(`error`, `Kafka error: ${err}`);
+    this.emit(`error`, `Kafka error: ${err}`)
   }
 
   /**
@@ -213,8 +213,8 @@ class KafkaConnector extends EventEmitter {
    */
   _addTopic(topic, callback) {
     this._autoCreateTopic(topic, callback, (callback) => {
-      this._consumer.addTopics([topic], callback);
-    });
+      this._consumer.addTopics([topic], callback)
+    })
   }
 
   /**
@@ -229,8 +229,8 @@ class KafkaConnector extends EventEmitter {
    */
   _send(payload, callback) {
     this._autoCreateTopic(payload.topic, callback, (callback) => {
-      this._producer.send([payload], callback);
-    });
+      this._producer.send([payload], callback)
+    })
   }
 
   /**
@@ -245,7 +245,7 @@ class KafkaConnector extends EventEmitter {
    * @returns {Function}
    */
   _autoCreateTopic(topic, origCallback, methodCallback) {
-    let tries = 0;
+    let tries = 0
 
     const _internalCallback = (err, arg) => {
       if (err) {
@@ -253,13 +253,13 @@ class KafkaConnector extends EventEmitter {
           this._producer.createTopics([topic], false, (err) => {
             if(err) {
               // Error creating topic:
-              origCallback(err);
-              return;
+              origCallback(err)
+              return
             }
             // Topic created, retry:
-            methodCallback(origCallback);
-          });
-          return;
+            methodCallback(origCallback)
+          })
+          return
         }
 
         // Sometimes kafka will throw a strange error in the form of an Array.
@@ -268,25 +268,25 @@ class KafkaConnector extends EventEmitter {
         // been accessed for a while.
         if(JSON.stringify(err) === '["LeaderNotAvailable"]') {
           if(tries < 3) {
-            methodCallback(_internalCallback);
-            tries++;
-            return;
+            methodCallback(_internalCallback)
+            tries++
+            return
           }
 
           // Retrying has been unsuccessful:
-          origCallback(new Error('LeaderNotAvailable'));
-          return;
+          origCallback(new Error('LeaderNotAvailable'))
+          return
         }
 
         // Something else went wrong:
-        origCallback(err);
+        origCallback(err)
       }
       // Topic exists, no problem:
-      origCallback(null, arg);
+      origCallback(null, arg)
     }
 
-    // Initial call;
-    methodCallback(_internalCallback);
+    // Initial call
+    methodCallback(_internalCallback)
   }
 
   /**
@@ -299,9 +299,9 @@ class KafkaConnector extends EventEmitter {
    */
   _validateConfig(config) {
     if (typeof config.connectionString !== 'string') {
-      throw new Error('Missing config parameter "connectionString"');
+      throw new Error('Missing config parameter "connectionString"')
     }
   }
 }
 
-module.exports = KafkaConnector;
+module.exports = KafkaConnector
