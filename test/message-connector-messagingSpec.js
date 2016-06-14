@@ -1,11 +1,15 @@
-"use strict";
+"use strict"
+
 /* global describe, it, expect, jasmine */
-
-const KafkaConnector = require('../src/message-connector.js');
-const connectionData = require('./connection-data');
-const kafka = require('kafka-node');
-const MESSAGE_TIME = 1000;
-
+const kafka = require('kafka-node')
+const MessageConnector = require( '../src/message-connector' )
+const expect = require('chai').expect
+const sinon = require( 'sinon' )
+const sinonChai = require("sinon-chai")
+require('chai').use(sinonChai)
+const EventEmitter = require( 'events' ).EventEmitter
+const connectionData = require('./connection-data')
+const MESSAGE_TIME = 1000
 
 describe('Messages are sent between multiple instances', () => {
   let connectorA;
@@ -14,36 +18,33 @@ describe('Messages are sent between multiple instances', () => {
 
   let topic = (Math.random() * 1e32).toString(36);
 
-  let callback_A1 = jasmine.createSpy('callback_A1');
-  let callback_B1 = jasmine.createSpy('callback_B1');
-  let callback_C1 = jasmine.createSpy('callback_C1');
+  let callback_A1 = sinon.spy()
+  let callback_B1 = sinon.spy()
+  let callback_C1 = sinon.spy()
 
   it('creates connectorA', (done) => {
-    connectorA = new KafkaConnector(connectionData);
-    expect(connectorA.isReady).toBe(false);
+    connectorA = new MessageConnector(connectionData);
+    expect(connectorA.isReady).to.equal(false);
     connectorA.once('ready', done);
-    connectorA.once('error', (err) => {
-      fail();
-      done();
-    });
+    connectorA.once('error', done);
   });
 
   it('creates connectorB', (done) => {
-    connectorB = new KafkaConnector(connectionData);
-    expect(connectorB.isReady).toBe(false);
+    connectorB = new MessageConnector(connectionData);
+    expect(connectorB.isReady).to.equal(false);
     connectorB.once('ready', done);
   });
 
   it('creates connectorC', (done) => {
-    connectorC = new KafkaConnector(connectionData);
-    expect(connectorC.isReady).toBe(false);
+    connectorC = new MessageConnector(connectionData);
+    expect(connectorC.isReady).to.equal(false);
     connectorC.once('ready', done);
   });
 
   it('the connectors are ready', () => {
-    expect(connectorA.isReady).toBe(true);
-    expect(connectorB.isReady).toBe(true);
-    expect(connectorC.isReady).toBe(true);
+    expect(connectorA.isReady).to.equal(true);
+    expect(connectorB.isReady).to.equal(true);
+    expect(connectorC.isReady).to.equal(true);
   });
 
   it('subscribes to a topic', (done) => {
@@ -51,9 +52,9 @@ describe('Messages are sent between multiple instances', () => {
     connectorB.subscribe(topic, callback_B1);
     connectorC.subscribe(topic, callback_C1);
 
-    expect(callback_A1).not.toHaveBeenCalled();
-    expect(callback_B1).not.toHaveBeenCalled();
-    expect(callback_C1).not.toHaveBeenCalled();
+    expect(callback_A1).to.not.have.been.called
+    expect(callback_B1).to.not.have.been.called
+    expect(callback_C1).to.not.have.been.called
 
     setTimeout(done, MESSAGE_TIME);
   });
@@ -67,13 +68,13 @@ describe('Messages are sent between multiple instances', () => {
   });
 
   it('connectorA and connectorC have received the message', () => {
-    expect(callback_A1).toHaveBeenCalledWith({
+    expect(callback_A1).to.have.been.calledWith({
       some: 'data'
     });
 
-    expect(callback_B1).not.toHaveBeenCalled();
+    expect(callback_B1).to.not.have.been.called
 
-    expect(callback_C1).toHaveBeenCalledWith({
+    expect(callback_C1).to.have.been.calledWith({
       some: 'data'
     });
   });
@@ -87,15 +88,15 @@ describe('Messages are sent between multiple instances', () => {
   });
 
   it('connectorA and connectorB have received the message', () => {
-    expect(callback_A1).toHaveBeenCalledWith({
+    expect(callback_A1).to.have.been.calledWith({
       other: 'value'
     });
 
-    expect(callback_B1).toHaveBeenCalledWith({
+    expect(callback_B1).to.have.been.calledWith({
       other: 'value'
     });
 
-    expect(callback_C1).toHaveBeenCalledWith({
+    expect(callback_C1).to.have.been.calledWith({
       some: 'data'
     });
   });
@@ -113,19 +114,19 @@ describe('Messages are sent between multiple instances', () => {
   });
 
   it('connectorA and connectorB have received the message', () => {
-    expect(callback_A1).toHaveBeenCalledWith({
+    expect(callback_A1).to.have.been.calledWith({
       val: 'y'
     });
 
-    expect(callback_B1).toHaveBeenCalledWith({
+    expect(callback_B1).to.have.been.calledWith({
       val: 'x'
     });
 
-    expect(callback_B1).toHaveBeenCalledWith({
+    expect(callback_B1).to.have.been.calledWith({
       val: 'y'
     });
 
-    expect(callback_C1).toHaveBeenCalledWith({
+    expect(callback_C1).to.have.been.calledWith({
       val: 'x'
     });
   });
@@ -143,15 +144,15 @@ describe('Messages are sent between multiple instances', () => {
   });
 
   it('only connector c has received the message', () => {
-    expect(callback_A1).not.toHaveBeenCalledWith({
+    expect(callback_A1).not.to.have.been.calledWith({
       notFor: 'B'
     });
 
-    expect(callback_B1).not.toHaveBeenCalledWith({
+    expect(callback_B1).not.to.have.been.calledWith({
       notFor: 'B'
     });
 
-    expect(callback_C1).toHaveBeenCalledWith({
+    expect(callback_C1).to.have.been.calledWith({
       notFor: 'B'
     });
   });
