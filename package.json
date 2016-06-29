@@ -1,6 +1,6 @@
 {
   "name": "deepstream.io-msg-kafka",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A [deepstream](http://deepstream.io) message connector for Apache Kafka",
   "main": "src/message-connector.js",
   "scripts": {
