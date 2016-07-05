@@ -6,7 +6,7 @@ const MessageConnector = require( '../src/message-connector' )
 const expect = require('chai').expect
 const EventEmitter = require( 'events' ).EventEmitter
 const connectionData = require('./connection-data')
-const MESSAGE_TIME = 1000
+const MESSAGE_TIME = 1900
 
 describe('the message connector has the correct structure', () => {
   let messageConnector

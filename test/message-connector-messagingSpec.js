@@ -9,7 +9,7 @@ const sinonChai = require("sinon-chai")
 require('chai').use(sinonChai)
 const EventEmitter = require( 'events' ).EventEmitter
 const connectionData = require('./connection-data')
-const MESSAGE_TIME = 1000
+const MESSAGE_TIME = 1900
 
 describe('Messages are sent between multiple instances', () => {
   let connectorA
