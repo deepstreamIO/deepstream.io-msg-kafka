@@ -2,4 +2,4 @@ plugins:
   message:
     name: kafka
     options:
-      connectionString: $KAFKA_CONNECTION_HOST
+      connectionString: ${KAFKA_CONNECTION_HOST}
