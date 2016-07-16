@@ -10,7 +10,7 @@ Please have a look there for detailed config options.
 
 ```javascript
 const Deepstream = require('deepstream.io');
-const KafkaMessageConnector = require('deepstream.io-msg-kafka');  // Currently there is no npm package. Coming soon!
+const KafkaMessageConnector = require('deepstream.io-msg-kafka');
 const server = new Deepstream();
 
 server.set('messageConnector', new KafkaMessageConnector({
