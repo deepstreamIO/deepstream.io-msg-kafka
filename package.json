@@ -20,16 +20,16 @@
   },
   "homepage": "http://deepstream.io",
   "dependencies": {
-    "kafka-node": "^0.3.2"
+    "kafka-node": "^1.6.0"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "coveralls": "^2.11.9",
-    "eslint": "^2.11.1",
-    "eslint-config-airbnb": "^3.1.0",
+    "eslint": "^3.19.0",
+    "eslint-config-airbnb": "^14.1.0",
     "istanbul": "^0.4.3",
-    "mocha": "^2.5.2",
-    "sinon": "^1.17.4",
+    "mocha": "^3.3.0",
+    "sinon": "^2.2.0",
     "sinon-chai": "^2.8.0"
   }
 }

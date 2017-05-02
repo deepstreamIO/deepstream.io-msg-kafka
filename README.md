@@ -1,6 +1,8 @@
 deepstream.io-msg-kafka
 ===================
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/deepstreamIO/deepstream.io-msg-kafka.svg)](https://greenkeeper.io/)
+
 [deepstream](http://deepstream.io) message connector for [Apache Kafka](http://kafka.apache.org/)
 
 This connector uses [the npm kafka-node package](https://www.npmjs.com/package/kafka-node).
