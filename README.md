@@ -1,6 +1,8 @@
 deepstream.io-msg-kafka
 ===================
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/deepstreamIO/deepstream.io-msg-kafka.svg)](https://greenkeeper.io/)
+
 #### What is Apache Kafka?
 Kafka started life as the messaging system that powered LinkedIn. It was open-sourced by the Apache Foundation in 2011 and has since found its way as the message broker of choice into many large enterprise organisations.
 
